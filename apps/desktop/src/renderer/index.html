@@ -1,0 +1,462 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>GFun Builder</title>
+    <style>
+      :root {
+        color-scheme: dark;
+        --bg-0: #060c16;
+        --bg-1: #0c1527;
+        --bg-2: #121f36;
+        --line: #243753;
+        --line-soft: #1a2b43;
+        --text-main: #e7f0ff;
+        --text-dim: #87a2c8;
+        --accent: #3ed6ff;
+        --accent-2: #8b7bff;
+        --ok: #45ffa5;
+        --warn: #ffc16a;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        font-family: Inter, Segoe UI, system-ui, sans-serif;
+        background: radial-gradient(circle at 15% 0%, #0f2447 0%, var(--bg-0) 45%);
+        color: var(--text-main);
+        overflow: hidden;
+      }
+
+      .titlebar {
+        display: grid;
+        grid-template-columns: auto 1fr auto;
+        gap: 14px;
+        align-items: center;
+        padding: 10px 14px;
+        border-bottom: 1px solid var(--line);
+        background: linear-gradient(180deg, #122241, #0a1323);
+      }
+
+      .brand {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        font-weight: 700;
+      }
+
+      .brand-dot {
+        width: 10px;
+        height: 10px;
+        border-radius: 50%;
+        background: linear-gradient(145deg, var(--accent), var(--accent-2));
+        box-shadow: 0 0 14px #46dbff;
+      }
+
+      .title-actions {
+        display: flex;
+        gap: 8px;
+      }
+
+      .action {
+        border: 1px solid var(--line);
+        background: #0c1a31;
+        color: var(--text-main);
+        border-radius: 8px;
+        padding: 7px 10px;
+        font-size: 12px;
+        cursor: pointer;
+      }
+
+      .action.primary {
+        border-color: #2379a6;
+        background: linear-gradient(145deg, #113a5a, #154673);
+      }
+
+      .action.ghost {
+        border-style: dashed;
+      }
+
+      .chip {
+        border: 1px solid var(--line);
+        border-radius: 999px;
+        padding: 3px 9px;
+        font-size: 11px;
+        color: var(--text-dim);
+      }
+
+      .chip.ok {
+        border-color: #1d8558;
+        color: var(--ok);
+      }
+
+      .chip.warn {
+        border-color: #8b6c31;
+        color: var(--warn);
+      }
+
+      .workspace {
+        display: grid;
+        grid-template-columns: 300px 1fr 340px;
+        grid-template-rows: 1fr 124px;
+        height: calc(100vh - 56px);
+      }
+
+      .panel {
+        border-right: 1px solid var(--line);
+        background: linear-gradient(180deg, #0d172b, #0a1220);
+      }
+
+      .panel-head {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 12px;
+        border-bottom: 1px solid var(--line-soft);
+      }
+
+      .panel-title {
+        font-size: 12px;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        color: var(--text-dim);
+      }
+
+      .panel-body {
+        padding: 12px;
+        height: calc(100% - 45px);
+        overflow: auto;
+      }
+
+      .panel:last-child {
+        border-right: none;
+        border-left: 1px solid var(--line);
+      }
+
+      .tree-item {
+        display: grid;
+        grid-template-columns: 1fr auto;
+        align-items: center;
+        padding: 8px 10px;
+        border: 1px solid var(--line-soft);
+        border-radius: 8px;
+        margin-bottom: 8px;
+        background: #0d1b31;
+      }
+
+      .tree-item.active {
+        border-color: #2f84b5;
+        background: #10273f;
+      }
+
+      .mono {
+        font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+        font-size: 11px;
+        color: var(--text-dim);
+      }
+
+      .center {
+        display: grid;
+        grid-template-rows: auto 1fr;
+        background: linear-gradient(180deg, var(--bg-1), #070f1d);
+      }
+
+      .toolbar {
+        display: flex;
+        gap: 8px;
+        padding: 10px;
+        border-bottom: 1px solid var(--line);
+      }
+
+      .tool {
+        border: 1px solid var(--line);
+        background: #0d1d35;
+        color: var(--text-main);
+        border-radius: 8px;
+        padding: 8px 10px;
+        font-size: 12px;
+        cursor: pointer;
+      }
+
+      .tool.active {
+        border-color: #2f84b5;
+        box-shadow: inset 0 0 0 1px #47cfff4d;
+      }
+
+      .viewport {
+        position: relative;
+      }
+
+      #viewport-canvas {
+        width: 100%;
+        height: 100%;
+      }
+
+      .viewport-overlay {
+        position: absolute;
+        right: 12px;
+        top: 12px;
+        background: #0d1d35d1;
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        padding: 6px 8px;
+        font-size: 11px;
+        color: var(--text-dim);
+      }
+
+      .inspector-grid {
+        display: grid;
+        gap: 9px;
+      }
+
+      .kv {
+        border: 1px solid var(--line-soft);
+        border-radius: 8px;
+        padding: 8px;
+        background: #0d1b31;
+      }
+
+      .kv label {
+        display: block;
+        font-size: 10px;
+        color: var(--text-dim);
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+      }
+
+      .kv span {
+        display: block;
+        margin-top: 4px;
+      }
+
+      .rail {
+        grid-column: 1 / 4;
+        border-top: 1px solid var(--line);
+        background: linear-gradient(180deg, #0a1222, #060a14);
+        padding: 10px 12px;
+      }
+
+      .rail-top {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 8px;
+      }
+
+      .timeline {
+        display: flex;
+        gap: 8px;
+        overflow-x: auto;
+      }
+
+      .event {
+        min-width: 180px;
+        border: 1px solid var(--line-soft);
+        border-radius: 8px;
+        padding: 6px 8px;
+        background: #0b1629;
+        font-size: 11px;
+      }
+
+      .command-palette {
+        position: fixed;
+        inset: 0;
+        display: none;
+        place-items: center;
+        background: #030811b8;
+      }
+
+      .command-palette.open {
+        display: grid;
+      }
+
+      .palette-card {
+        width: min(680px, calc(100vw - 40px));
+        border: 1px solid var(--line);
+        border-radius: 12px;
+        background: #0b1528;
+        padding: 12px;
+      }
+
+      .palette-input {
+        width: 100%;
+        border: 1px solid var(--line);
+        background: #091226;
+        color: var(--text-main);
+        border-radius: 8px;
+        padding: 10px;
+      }
+
+      .palette-help {
+        margin-top: 8px;
+        font-size: 11px;
+        color: var(--text-dim);
+      }
+
+      .hidden {
+        display: none;
+      }
+
+      .form-grid {
+        display: grid;
+        gap: 8px;
+      }
+
+      .field-row {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 8px;
+      }
+
+      .compact-input,
+      .compact-select {
+        width: 100%;
+        border: 1px solid var(--line);
+        background: #091226;
+        color: var(--text-main);
+        border-radius: 8px;
+        padding: 8px;
+        font-size: 12px;
+      }
+
+      .section-title {
+        font-size: 10px;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        color: var(--text-dim);
+        margin-bottom: 6px;
+      }
+    </style>
+  </head>
+  <body>
+    <header class="titlebar">
+      <div class="brand">
+        <span class="brand-dot"></span>
+        <span>GFun Design Studio</span>
+      </div>
+      <div>
+        <span class="chip">Fusion/Shapr style shell</span>
+        <span id="api-chip" class="chip warn">Checking CAD API…</span>
+      </div>
+      <div class="title-actions">
+        <button class="action ghost" id="open-command">Command Search</button>
+        <button class="action" id="refresh-models">Refresh</button>
+      </div>
+    </header>
+    <main class="workspace">
+      <section class="panel" id="left-panel">
+        <div class="panel-head">
+          <span class="panel-title">Assembly Browser</span>
+          <button class="action" data-toggle-panel="left-panel">Hide</button>
+        </div>
+        <div class="panel-body">
+          <div style="display: grid; gap: 8px; margin-bottom: 12px;">
+            <input id="project-id" value="default-project" class="palette-input" />
+            <div style="display:flex; gap:8px;">
+              <input id="model-file-input" type="file" accept=".step,.stp" class="hidden" />
+              <button class="action primary" id="upload-step">Upload STEP</button>
+              <button class="action" id="load-sample">Use local sample</button>
+            </div>
+          </div>
+          <div id="model-list"></div>
+        </div>
+      </section>
+
+      <section class="center">
+        <div class="toolbar">
+          <button class="tool active" data-tool="select">Select</button>
+          <button class="tool" data-tool="move">Move</button>
+          <button class="tool" data-tool="rotate">Rotate</button>
+          <button class="tool" data-tool="length">Edit Length</button>
+          <button class="tool" data-tool="snap">Snap Mate</button>
+          <button class="tool" data-tool="measure">Measure</button>
+        </div>
+        <div class="viewport">
+          <div id="viewport-canvas"></div>
+          <div class="viewport-overlay" id="viewport-overlay">No model loaded</div>
+        </div>
+      </section>
+
+      <section class="panel" id="right-panel">
+        <div class="panel-head">
+          <span class="panel-title">Inspector</span>
+          <button class="action" data-toggle-panel="right-panel">Hide</button>
+        </div>
+        <div class="panel-body inspector-grid">
+          <div class="kv">
+            <label>Active Tool</label>
+            <span id="active-tool">Select</span>
+          </div>
+          <div class="kv">
+            <label>Selected Model</label>
+            <span id="selected-model">None</span>
+          </div>
+          <div class="kv">
+            <label>Constraint Mode</label>
+            <span>Coincident · Concentric · Distance · Angle · Parallel · Perpendicular</span>
+          </div>
+          <div class="kv">
+            <label>Status</label>
+            <span id="status-text">Ready</span>
+          </div>
+          <div class="kv">
+            <div class="section-title">Length Edit Prototype</div>
+            <div class="form-grid">
+              <div class="field-row">
+                <select id="length-axis" class="compact-select">
+                  <option value="x">X Axis</option>
+                  <option value="y">Y Axis</option>
+                  <option value="z" selected>Z Axis</option>
+                </select>
+                <input id="length-target" class="compact-input" type="number" value="1000" min="1" step="1" />
+              </div>
+              <button class="action primary" id="apply-length-edit">Apply Length Edit</button>
+            </div>
+          </div>
+          <div class="kv">
+            <div class="section-title">Snap Constraint Prototype</div>
+            <div class="form-grid">
+              <select id="snap-constraint" class="compact-select">
+                <option value="coincident">Coincident</option>
+                <option value="concentric">Concentric</option>
+                <option value="distance">Distance</option>
+                <option value="angle">Angle</option>
+                <option value="parallel">Parallel</option>
+                <option value="perpendicular">Perpendicular</option>
+              </select>
+              <div class="field-row">
+                <input id="snap-source" class="compact-input" value="face:A" />
+                <input id="snap-target" class="compact-input" value="face:B" />
+              </div>
+              <button class="action" id="apply-snap">Apply Snap Constraint</button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="rail">
+        <div class="rail-top">
+          <div class="panel-title">Timeline / Command Stack</div>
+          <span class="mono">⌘/Ctrl + K for command palette</span>
+        </div>
+        <div class="timeline" id="timeline">
+          <div class="event">Session initialized</div>
+        </div>
+      </section>
+    </main>
+
+    <div class="command-palette" id="command-palette">
+      <div class="palette-card">
+        <input class="palette-input" id="command-input" placeholder="Type a command: upload, list, load, snap, bom" />
+        <div class="palette-help">Enter command and press `Escape` to close.</div>
+      </div>
+    </div>
+
+    <script src="./vendor/occt/occt-import-js.js"></script>
+    <script type="module" src="./renderer.js"></script>
+  </body>
+</html>

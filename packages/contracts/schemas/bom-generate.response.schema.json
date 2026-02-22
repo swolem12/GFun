@@ -1,0 +1,27 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://gfun.dev/schemas/bom-generate.response.schema.json",
+  "title": "BomGenerateResponse",
+  "type": "object",
+  "required": ["projectId", "items"],
+  "properties": {
+    "projectId": {
+      "type": "string",
+      "minLength": 1
+    },
+    "items": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["partNumber", "name", "quantity"],
+        "properties": {
+          "partNumber": { "type": "string", "minLength": 1 },
+          "name": { "type": "string", "minLength": 1 },
+          "quantity": { "type": "integer", "minimum": 1 }
+        },
+        "additionalProperties": false
+      }
+    }
+  },
+  "additionalProperties": false
+}

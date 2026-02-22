@@ -1,0 +1,9 @@
+Metadata-Version: 2.4
+Name: gfun-cad-api
+Version: 0.1.0
+Summary: CAD orchestration API for GFun
+Requires-Python: >=3.11
+Requires-Dist: fastapi>=0.116.1
+Requires-Dist: python-multipart>=0.0.20
+Requires-Dist: uvicorn[standard]>=0.35.0
+Requires-Dist: pydantic>=2.11.7
