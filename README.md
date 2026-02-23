@@ -48,6 +48,33 @@ JSON schemas defining command and response contracts for API communication and v
 - **Python 3.8+** (for CAD API service)
 - **npm or yarn** (package managers)
 
+### Quick Start (Recommended)
+
+The easiest way to get started:
+
+```bash
+# Clone the repository
+git clone https://github.com/swolem12/GFun.git
+cd GFun
+
+# Install all dependencies (both Node and Python)
+npm install
+cd services/cad-api && pip install -e . && cd ../..
+
+# Launch in two terminals:
+# Terminal 1:
+npm run dev:api
+
+# Terminal 2:
+npm run dev:desktop
+```
+
+**That's it!** The application will:
+- Start the API on `http://localhost:8000`
+- Launch the Electron desktop app automatically
+- Load sample models from the local library
+- Show a working 3D viewer with lighting and shadows
+
 ### Installation
 
 ```bash
@@ -133,12 +160,16 @@ curl -X POST "http://localhost:8000/bom/generate" \
 ### ✅ Completed
 - Desktop CAD-style application shell with professional UI
 - Electron window management with preload/context isolation
-- Three.js 3D viewport with full camera controls
-- STEP model import pipeline and display
+- Three.js 3D viewport with full camera controls and shadows
+- STEP model import pipeline and display with proper lighting
 - Model upload, list, and content retrieval endpoints
 - Operation timeline for tracking edits and constraints
 - Basic dimension editing and constraint application
 - JSON schema validation for API contracts
+- **NEW**: Local model library browser
+- **NEW**: Auto-configured project ID handling
+- **NEW**: Enhanced 3D rendering with better materials and lighting
+- **NEW**: Comprehensive error handling and user feedback
 
 ### 🚧 In Progress
 - STEP geometry rendering optimization
@@ -154,6 +185,17 @@ curl -X POST "http://localhost:8000/bom/generate" \
 - Collaborative editing features
 - Custom plugin API
 
+## 📝 Recent Fixes (February 23, 2026)
+
+See [FIXES.md](FIXES.md) for comprehensive details on recent improvements:
+
+- ✓ Fixed desktop app initialization (now boots with sensible defaults)
+- ✓ Improved 3D rendering (better lighting, shadows, materials)
+- ✓ Added local model library browser
+- ✓ Better error handling and user feedback
+- ✓ Robust default project ID handling
+- ✓ API robustness improvements
+
 ## 🛠️ Development
 
 ### Building for Production
@@ -168,13 +210,42 @@ npm run build:desktop       # Build Electron app
 
 ### Troubleshooting
 
-**API won't start:**
-- Make sure port 8000 is available: `lsof -i :8000`
-- Check Python installation: `python3 --version`
+#### Desktop App Won't Launch
+```bash
+# Clear build and try again:
+rm -rf apps/desktop/dist
+npm run dev:desktop
+```
 
-**Desktop app won't launch:**
-- Clear build: `rm -rf apps/desktop/dist && npm run dev:desktop`
-- Check Node version: `node --version`
+If you see "renderer HTML not found":
+- Build the project: `npm run build:desktop`
+- Check that `apps/desktop/src/renderer/index.html` exists
+
+#### API Won't Start or Shows Port Error
+```bash
+# Check if port 8000 is already in use:
+lsof -i :8000
+
+# Kill any process using port 8000, then restart:
+npm run dev:api
+```
+
+#### "3D renderer unavailable" Message
+- Make sure your browser/system supports WebGL
+- Update your GPU drivers
+- Check browser console (F12) for detailed errors
+
+#### Models Won't Load from Library
+- Ensure STEP files exist in the `3D Models/` directory
+- Check that filenames end in `.step` or `.stp` (case-insensitive)
+- Look at browser console for actual error messages
+
+#### Upload Fails with "Only STEP files supported"
+- Verify your file has `.step` or `.stp` extension
+- Try renaming files if they have multiple dots
+- Check file isn't corrupted by opening in another STEP viewer
+
+For more issues, check the [FIXES.md](FIXES.md) documentation.
 
 ## 📚 Sample Models
 
