@@ -3,6 +3,7 @@ import { OrbitControls } from "./vendor/three/OrbitControls.js";
 
 const baseUrl = window.gfun?.cadApiBaseUrl ?? "http://127.0.0.1:8000";
 const API_TIMEOUT_MS = 10000;
+const DEFAULT_PROJECT_ID = "default-project";
 
 let occtPromise = null;
 const getOcct = async () => {
@@ -51,7 +52,8 @@ const applySnapButton = document.getElementById("apply-snap");
 
 const viewportRoot = document.getElementById("viewport-canvas");
 const scene = new THREE.Scene();
-scene.background = new THREE.Color("#071122");
+scene.background = new THREE.Color("#0a1428");
+scene.fog = new THREE.Fog(0x0a1428, 5000, 10000);
 
 const camera = new THREE.PerspectiveCamera(55, viewportRoot.clientWidth / viewportRoot.clientHeight, 0.1, 10000);
 camera.position.set(500, 350, 500);
@@ -59,14 +61,18 @@ camera.position.set(500, 350, 500);
 let renderer;
 let controls;
 try {
-  renderer = new THREE.WebGLRenderer({ antialias: true });
+  renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
   renderer.setPixelRatio(window.devicePixelRatio);
   renderer.setSize(viewportRoot.clientWidth, viewportRoot.clientHeight);
+  renderer.shadowMap.enabled = true;
+  renderer.shadowMap.type = THREE.PCFShadowShadowMap;
   viewportRoot.appendChild(renderer.domElement);
 
   controls = new OrbitControls(camera, renderer.domElement);
   controls.enableDamping = true;
   controls.dampingFactor = 0.08;
+  controls.autoRotate = false;
+  controls.autoRotateSpeed = 2;
 } catch (error) {
   console.error("Failed to initialize 3D renderer", error);
   statusText.textContent = "3D renderer unavailable";
@@ -85,12 +91,22 @@ try {
   };
 }
 
-const hemi = new THREE.HemisphereLight(0xb2ddff, 0x1b2238, 0.9);
-const dir = new THREE.DirectionalLight(0xffffff, 1.2);
+const hemi = new THREE.HemisphereLight(0xb2ddff, 0x1b2238, 1.0);
+const dir = new THREE.DirectionalLight(0xffffff, 1.4);
 dir.position.set(300, 400, 250);
+dir.castShadow = true;
+dir.shadow.mapSize.width = 2048;
+dir.shadow.mapSize.height = 2048;
+dir.shadow.camera.near = 0.5;
+dir.shadow.camera.far = 2000;
+dir.shadow.camera.left = -1000;
+dir.shadow.camera.right = 1000;
+dir.shadow.camera.top = 1000;
+dir.shadow.camera.bottom = -1000;
 scene.add(hemi, dir);
 
 const grid = new THREE.GridHelper(1500, 60, 0x2d4a70, 0x1a2f4a);
+grid.position.y = 0;
 scene.add(grid);
 
 const axis = new THREE.AxesHelper(120);
@@ -226,7 +242,12 @@ const parseStepBlob = async (blob) => {
 
     const threeMesh = new THREE.Mesh(
       geometry,
-      new THREE.MeshStandardMaterial({ color: 0x7ec7ff, metalness: 0.55, roughness: 0.25 })
+      new THREE.MeshStandardMaterial({ 
+        color: 0x7ec7ff, 
+        metalness: 0.45, 
+        roughness: 0.35,
+        side: THREE.DoubleSide
+      })
     );
     threeMesh.castShadow = true;
     threeMesh.receiveShadow = true;
@@ -274,45 +295,56 @@ const checkApi = async () => {
 };
 
 const fetchModels = async () => {
-  const projectId = projectIdInput.value.trim();
+  let projectId = projectIdInput.value.trim();
   if (!projectId) {
-    return;
+    projectId = DEFAULT_PROJECT_ID;
+    projectIdInput.value = projectId;
   }
 
-  setStatus("Fetching models...");
-  const payload = await fetchJson(`${baseUrl}/api/v1/models?project_id=${encodeURIComponent(projectId)}`);
-  modelList.innerHTML = "";
+  try {
+    setStatus("Fetching models...");
+    const payload = await fetchJson(`${baseUrl}/api/v1/models?project_id=${encodeURIComponent(projectId)}`);
+    modelList.innerHTML = "";
 
-  if (!payload.models.length) {
-    const empty = document.createElement("div");
-    empty.className = "mono";
-    empty.textContent = "No models uploaded for this project.";
-    modelList.appendChild(empty);
-    setStatus("No models in project");
-    return;
-  }
+    if (!payload.models.length) {
+      const empty = document.createElement("div");
+      empty.className = "mono";
+      empty.textContent = "No models uploaded for this project.";
+      modelList.appendChild(empty);
+      setStatus("No models in project");
+      return;
+    }
 
-  payload.models.forEach((model) => {
-    const row = document.createElement("button");
-    row.className = "tree-item";
-    row.innerHTML = `<span>${model.file_name}</span><span class="mono">${model.model_id}</span>`;
-    row.addEventListener("click", async () => {
-      setStatus("Downloading model...");
-      const content = await fetchWithTimeout(`${baseUrl}/api/v1/models/${model.model_id}/content`);
-      if (!content.ok) {
-        throw new Error(`Model download failed (${content.status})`);
-      }
-      const blob = await content.blob();
-      await loadStepBlob(blob, model.file_name);
-      selectedModelId = model.model_id;
-      [...document.querySelectorAll(".tree-item")].forEach((item) => item.classList.remove("active"));
-      row.classList.add("active");
-      await fetchOperationHistory();
+    payload.models.forEach((model) => {
+      const row = document.createElement("button");
+      row.className = "tree-item";
+      row.innerHTML = `<span>${model.file_name}</span><span class="mono">${model.model_id}</span>`;
+      row.addEventListener("click", async () => {
+        try {
+          setStatus("Downloading model...");
+          const content = await fetchWithTimeout(`${baseUrl}/api/v1/models/${model.model_id}/content`);
+          if (!content.ok) {
+            throw new Error(`Model download failed (${content.status})`);
+          }
+          const blob = await content.blob();
+          await loadStepBlob(blob, model.file_name);
+          selectedModelId = model.model_id;
+          [...document.querySelectorAll(".tree-item")].forEach((item) => item.classList.remove("active"));
+          row.classList.add("active");
+          await fetchOperationHistory();
+        } catch (error) {
+          setStatus("Model load failed");
+          console.error(error);
+        }
+      });
+      modelList.appendChild(row);
     });
-    modelList.appendChild(row);
-  });
 
-  setStatus(`Loaded ${payload.models.length} model references`);
+    setStatus(`Loaded ${payload.models.length} model references`);
+  } catch (error) {
+    setStatus("Failed to load models");
+    console.error(error);
+  }
 };
 
 const fetchOperationHistory = async () => {
@@ -401,9 +433,15 @@ const applySnapPrototype = async () => {
 };
 
 const uploadSelectedStep = async () => {
-  const projectId = projectIdInput.value.trim();
+  let projectId = projectIdInput.value.trim();
+  if (!projectId) {
+    projectId = DEFAULT_PROJECT_ID;
+    projectIdInput.value = projectId;
+  }
+  
   const file = stepInput.files?.[0];
-  if (!projectId || !file) {
+  if (!file) {
+    setStatus("No file selected");
     return;
   }
 
@@ -411,19 +449,69 @@ const uploadSelectedStep = async () => {
   form.append("file", file);
   setStatus("Uploading STEP...");
 
-  const response = await fetchWithTimeout(`${baseUrl}/api/v1/models/upload?project_id=${encodeURIComponent(projectId)}`, {
-    method: "POST",
-    body: form
-  });
+  try {
+    const response = await fetchWithTimeout(`${baseUrl}/api/v1/models/upload?project_id=${encodeURIComponent(projectId)}`, {
+      method: "POST",
+      body: form
+    });
 
-  if (!response.ok) {
-    const detail = await response.text();
-    throw new Error(`Upload failed: ${detail}`);
+    if (!response.ok) {
+      const detail = await response.text();
+      throw new Error(`Upload failed: ${detail}`);
+    }
+
+    addEvent(`Uploaded ${file.name}`);
+    setStatus("Upload complete");
+    await fetchModels();
+  } catch (error) {
+    setStatus("Upload failed");
+    console.error(error);
   }
+};
 
-  addEvent(`Uploaded ${file.name}`);
-  setStatus("Upload complete");
-  await fetchModels();
+const fetchLocalModels = async () => {
+  try {
+    const response = await fetchJson(`${baseUrl}/api/v1/local-models`);
+    const localModelsList = document.getElementById("local-models-list");
+    if (!localModelsList) {
+      return;
+    }
+    
+    localModelsList.innerHTML = "";
+    if (!response.models || response.models.length === 0) {
+      const empty = document.createElement("div");
+      empty.className = "mono";
+      empty.textContent = "No local models available";
+      localModelsList.appendChild(empty);
+      return;
+    }
+
+    response.models.forEach((filename) => {
+      const row = document.createElement("button");
+      row.className = "tree-item";
+      row.innerHTML = `<span>${filename}</span><span class="mono">library</span>`;
+      row.addEventListener("click", async () => {
+        try {
+          setStatus(`Loading ${filename}...`);
+          const content = await fetchWithTimeout(`${baseUrl}/api/v1/local-models/${filename}`);
+          if (!content.ok) {
+            throw new Error(`Load failed (${content.status})`);
+          }
+          const blob = await content.blob();
+          await loadStepBlob(blob, filename);
+          selectedModelId = filename;
+          [...document.querySelectorAll("#local-models-list .tree-item")].forEach((item) => item.classList.remove("active"));
+          row.classList.add("active");
+        } catch (error) {
+          setStatus("Failed to load local model");
+          console.error(error);
+        }
+      });
+      localModelsList.appendChild(row);
+    });
+  } catch (error) {
+    console.warn("Local models not available", error);
+  }
 };
 
 const hookUI = () => {
@@ -574,15 +662,19 @@ const resize = () => {
 window.addEventListener("resize", resize);
 
 const init = async () => {
+  projectIdInput.value = DEFAULT_PROJECT_ID;
   setStatus("Initializing workspace");
   hookUI();
   void checkApi();
   setInterval(checkApi, 30000);
   try {
-    await fetchModels();
-    await fetchOperationHistory();
+    await Promise.all([
+      fetchModels(),
+      fetchLocalModels(),
+      fetchOperationHistory()
+    ]);
   } catch (error) {
-    setStatus("Model list unavailable");
+    setStatus("Initialization complete (some features may be limited)");
     console.error(error);
   }
   animate();

@@ -140,6 +140,25 @@ def health() -> dict[str, str]:
     return {"status": "ok"}
 
 
+@app.get("/")
+def root() -> dict[str, str]:
+    return {
+        "name": "GFun CAD API",
+        "version": "0.1.0",
+        "docs": "/docs",
+        "health": "/health",
+        "api": "/api/v1"
+    }
+
+
+@app.get("/api/v1")
+def api_info() -> dict[str, str]:
+    return {
+        "version": "1.0.0",
+        "endpoints": "See /docs for full API documentation"
+    }
+
+
 @app.get("/api/v1/assemblies/{assembly_id}", response_model=AssemblyResponse)
 def assembly_get(assembly_id: str, project_id: str = Query("default-project")) -> AssemblyResponse:
     return AssemblyResponse(assembly=get_assembly(project_id=project_id, assembly_id=assembly_id))
